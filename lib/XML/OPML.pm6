@@ -12,10 +12,32 @@ class XML::OPML::Head {
     has $.windowLeft is rw;
     has $.windowBottom is rw;
     has $.windowRight is rw;
+
+    #OPML 2.0 specification added docs
+    has $.docs is rw;
 };
 
+#TODO: Use this class as base for reading/writing OPML 2.0 documents, which should be the default
 class XML::OPML::Outline {
+    has %.attributes is rw;
+    has @.outlines is rw;
     method as_str(&encode) of Str {
+        my Str $result ~= "<outline ";
+        my %attrs = %.attributes;
+        %attrs.sort(*.key);
+        for %attrs.kv -> $key, $value {
+            $result ~= "$key=\"" ~ encode($value) ~ "\" ";
+        } 
+        if @.outlines {
+            $result ~= ">\n";
+            for @.outlines -> $outline {
+                $result ~= $outline.as_str(&encode);
+            }
+            $result ~= "</outline>";
+        } else {
+            $result ~= " />\n";
+        }
+        return $result;
     };
 }
 
@@ -35,6 +57,7 @@ class XML::OPML::EmbeddedOutline is XML::OPML::Outline {
     has Str $.xmlUrl is rw;
     has XML::OPML::Outline @.outlines is rw;
 
+    #return the current object's children as an OPML document string
     my method createEmbedded(&encode) of Str {
         my Str $result;
         for @.outlines -> $outline {
@@ -43,6 +66,7 @@ class XML::OPML::EmbeddedOutline is XML::OPML::Outline {
         return $result;
     }
     
+    #convert the current object to a string conforming to OPML specification
     method as_str(&encode) of Str {
         my Str $result = "";
         my Str $embText = "";
@@ -87,7 +111,7 @@ class XML::OPML {
 
     has XML::OPML::Head $.head is rw;
     has $.body is rw;
-    has $.version is rw;
+    has $.version is rw = "2.0";
     has Str $.encoding is rw = "UTF-8";
     has XML::OPML::Outline @.outlines;
 
@@ -127,19 +151,15 @@ class XML::OPML {
         return $body;
     }
     
-    method as_opml_1_1() of Str {
+    method as_string() {
         my Str $output;
         $output ~= '<?xml version="1.0" encoding="' ~ $.encoding ~ '"?>' ~ "\n";
-        $output ~= '<opml version="1.1">' ~ "\n";
+        $output ~= "<opml version=\"$.version\">\n";
 
         #Head
         $output ~= self.getHeadStr();
         $output ~= self.getBodyStr();
         return $output;
-    }
-   
-    method as_string() {
-        return self.as_opml_1_1();    
     }
 }
 
