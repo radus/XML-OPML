@@ -17,14 +17,14 @@ class XML::OPML::Head {
     has $.docs is rw;
 };
 
-#TODO: Use this class as base for reading/writing OPML 2.0 documents, which should be the default
 class XML::OPML::Outline {
     has %.attributes is rw;
     has @.outlines is rw;
     method as_str(&encode) of Str {
         my Str $result ~= "<outline ";
         my %attrs = %.attributes;
-        %attrs.sort(*.key);
+        #TODO attributes are not really alphabetically ordered
+        %attrs = %attrs.sort({ $^a.key cmp $^b.key} );
         for %attrs.kv -> $key, $value {
             $result ~= "$key=\"" ~ encode($value) ~ "\" ";
         } 
@@ -33,7 +33,7 @@ class XML::OPML::Outline {
             for @.outlines -> $outline {
                 $result ~= $outline.as_str(&encode);
             }
-            $result ~= "</outline>";
+            $result ~= "</outline>\n";
         } else {
             $result ~= " />\n";
         }
@@ -41,71 +41,71 @@ class XML::OPML::Outline {
     };
 }
 
-class XML::OPML::EmbeddedOutline is XML::OPML::Outline {
-    has Str $.opmlvalue is rw;
-    has Str $.dateAdded is rw;
-    has Str $.dateDownloaded is rw;
-    has Str $.description is rw;
-    has Str $.email is rw;
-    has Str $.filename is rw;
-    has Str $.htmlUrl is rw;
-    has Str $.keywords is rw;
-    has Str $.text is rw;
-    has Str $.title is rw;
-    has Str $.type is rw;
-    has Str $.version is rw;
-    has Str $.xmlUrl is rw;
-    has XML::OPML::Outline @.outlines is rw;
-
-    #return the current object's children as an OPML document string
-    my method createEmbedded(&encode) of Str {
-        my Str $result;
-        for @.outlines -> $outline {
-            $result ~= $outline.as_str(&encode);
-        }
-        return $result;
-    }
-    
-    #convert the current object to a string conforming to OPML specification
-    method as_str(&encode) of Str {
-        my Str $result = "";
-        my Str $embText = "";
-        $embText ~= "dateAdded=\"$.dateAdded\" " if $.dateAdded;
-        $embText ~= "dateDownloaded=\"$.dateDownloaded\" " if $.dateDownloaded ;
-        $embText ~= "description=\"$.description\" " if $.description ;
-        $embText ~= "email=\"$.email\" " if $.email ;
-        $embText ~= "filename=\"$.filename\" " if $.filename ;
-        $embText ~= "htmlUrl=\"$.htmlUrl\" " if $.htmlUrl ;
-        $embText ~= "keywords=\"$.keywords\" " if $.keywords ;
-        $embText ~= "text=\"$.text\" " if $.text ;
-        $embText ~= "type=\"$.type\" " if $.type ;
-        $embText ~= "title=\"$.title\" " if $.title ;
-        $embText ~= "version=\"$.version\" " if $.version ;
-        $embText ~= "xmlUrl=\"$.xmlUrl\" " if $.xmlUrl ;
-        if $embText eq "" {
-            $result ~= "<outline>\n";
-        } else {
-            $result ~= "<outline $embText>\n";
-        } 
-        $result ~= self.createEmbedded(&encode);
-        $result ~= "</outline>\n";
-        return $result;
-    }
-}
-
-class XML::OPML::NormalOutline is XML::OPML::Outline {
-    has %.attributes is rw;
-    method as_str(&encode) of Str {
-        my Str $str ~= "<outline ";
-        my %attrs = %.attributes;
-        %attrs.sort(*.key);
-        for %attrs.kv -> $key, $value {
-            $str ~= "$key=\"" ~ encode($value) ~ "\" ";
-        } 
-        $str ~= " />\n";
-        return $str;
-    }
-}
+#class XML::OPML::EmbeddedOutline is XML::OPML::Outline {
+#    has Str $.opmlvalue is rw;
+#    has Str $.dateAdded is rw;
+#    has Str $.dateDownloaded is rw;
+#    has Str $.description is rw;
+#    has Str $.email is rw;
+#    has Str $.filename is rw;
+#    has Str $.htmlUrl is rw;
+#    has Str $.keywords is rw;
+#    has Str $.text is rw;
+#    has Str $.title is rw;
+#    has Str $.type is rw;
+#    has Str $.version is rw;
+#    has Str $.xmlUrl is rw;
+#    has XML::OPML::Outline @.outlines is rw;
+#
+#    #return the current object's children as an OPML document string
+#    my method createEmbedded(&encode) of Str {
+#        my Str $result;
+#        for @.outlines -> $outline {
+#            $result ~= $outline.as_str(&encode);
+#        }
+#        return $result;
+#    }
+#    
+#    #convert the current object to a string conforming to OPML specification
+#    method as_str(&encode) of Str {
+#        my Str $result = "";
+#        my Str $embText = "";
+#        $embText ~= "dateAdded=\"$.dateAdded\" " if $.dateAdded;
+#        $embText ~= "dateDownloaded=\"$.dateDownloaded\" " if $.dateDownloaded ;
+#        $embText ~= "description=\"$.description\" " if $.description ;
+#        $embText ~= "email=\"$.email\" " if $.email ;
+#        $embText ~= "filename=\"$.filename\" " if $.filename ;
+#        $embText ~= "htmlUrl=\"$.htmlUrl\" " if $.htmlUrl ;
+#        $embText ~= "keywords=\"$.keywords\" " if $.keywords ;
+#        $embText ~= "text=\"$.text\" " if $.text ;
+#        $embText ~= "type=\"$.type\" " if $.type ;
+#        $embText ~= "title=\"$.title\" " if $.title ;
+#        $embText ~= "version=\"$.version\" " if $.version ;
+#        $embText ~= "xmlUrl=\"$.xmlUrl\" " if $.xmlUrl ;
+#        if $embText eq "" {
+#            $result ~= "<outline>\n";
+#        } else {
+#            $result ~= "<outline $embText>\n";
+#        } 
+#        $result ~= self.createEmbedded(&encode);
+#        $result ~= "</outline>\n";
+#        return $result;
+#    }
+#}
+#
+#class XML::OPML::NormalOutline is XML::OPML::Outline {
+#    has %.attributes is rw;
+#    method as_str(&encode) of Str {
+#        my Str $str ~= "<outline ";
+#        my %attrs = %.attributes;
+#        %attrs.sort(*.key);
+#        for %attrs.kv -> $key, $value {
+#            $str ~= "$key=\"" ~ encode($value) ~ "\" ";
+#        } 
+#        $str ~= " />\n";
+#        return $str;
+#    }
+#}
 
 class XML::OPML {
 
@@ -113,6 +113,7 @@ class XML::OPML {
     has $.body is rw;
     has $.version is rw = "2.0";
     has Str $.encoding is rw = "UTF-8";
+    has Bool $.encode-output = False;
     has XML::OPML::Outline @.outlines;
 
     method add_outline(XML::OPML::Outline $outline) {
@@ -120,7 +121,8 @@ class XML::OPML {
     }
 
     my method encode(Str $str ) of Str {
-        return $str;
+        return $str unless($.encode-output);
+        
     }
     
     my method getHeadStr() of Str {
@@ -148,6 +150,7 @@ class XML::OPML {
         for @.outlines -> $outline {
             $body ~= $outline.as_str({self.encode($_)});
         }
+        $body ~= "</body>\n";
         return $body;
     }
     
@@ -159,36 +162,8 @@ class XML::OPML {
         #Head
         $output ~= self.getHeadStr();
         $output ~= self.getBodyStr();
+        $output ~= "</opml>\n";
         return $output;
     }
 }
-
-my XML::OPML $opmlTest .= new(version => '2.0');
-$opmlTest.head = XML::OPML::Head.new(title => 'mySubscription',
-                         dateCreated => 'Mon, 16 Feb 2004 11:35:00 GMT',
-                         dateModified => 'Mon, 16 Feb 2004 11:35:00 GMT',
-                         ownerName => 'michael szul',
-                         ownerEmail => 'michael@madghoul.com',
-                         expansionState => '',
-                         vertScrollState => '',
-                         windowTop => '',
-                         windowLeft => '',
-                         windowBottom => '',
-                         windowRight => '',
-                    );
-my XML::OPML::NormalOutline $outline .= new(attributes => {
-                 text => 'madghoul.com | the dark night of the soul',
-                 description => 'madghoul.com, keep your nightmares in order with the one site that keeps you up to date on the dark night of the soul.',
-                 title => 'madghoul.com | the dark night of the soul',
-                 type => 'rss',
-                 version => 'RSS',
-                 htmlUrl => 'http://www.madghoul.com/ghoul/InsaneRapture/lunacy.mhtml',
-                 xmlUrl => 'http://www.madghoul.com/cgi-bin/fearsome/fallout/index.rss10'}
-                );
-my XML::OPML::EmbeddedOutline $embOutline .= new();
-$embOutline.outlines.push($outline);
-#$opmlTest.add_outline($outline);
-$opmlTest.add_outline($embOutline);
-
-$opmlTest.as_string().say;
 

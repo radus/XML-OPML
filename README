@@ -1,0 +1,3 @@
+This is a perl module for creating OPML documents.
+
+OPML is an XML specification for outliners - more details can be found at www.opml.org.

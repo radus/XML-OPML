@@ -2,10 +2,6 @@ use v6;
 
 use Test;
 
-BEGIN {
-    @*INC.push("/home/radu/work_area/XML-OPML/lib");
-}
-
 use XML::OPML;
 
 {
