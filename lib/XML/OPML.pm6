@@ -12,8 +12,6 @@ class XML::OPML::Head {
     has $.windowLeft is rw;
     has $.windowBottom is rw;
     has $.windowRight is rw;
-
-    #OPML 2.0 specification added docs
     has $.docs is rw;
 };
 
@@ -22,11 +20,8 @@ class XML::OPML::Outline {
     has @.outlines is rw;
     method as_str(&encode) of Str {
         my Str $result ~= "<outline ";
-        my %attrs = %.attributes;
-        #TODO attributes are not really alphabetically ordered
-        %attrs = %attrs.sort({ $^a.key cmp $^b.key} );
-        for %attrs.kv -> $key, $value {
-            $result ~= "$key=\"" ~ encode($value) ~ "\" ";
+        for %.attributes.sort(*.key) {
+            $result ~= "$.key=\"" ~ encode($.value) ~ "\" ";
         } 
         if @.outlines {
             $result ~= ">\n";
@@ -35,77 +30,11 @@ class XML::OPML::Outline {
             }
             $result ~= "</outline>\n";
         } else {
-            $result ~= " />\n";
+            $result ~= "/>\n";
         }
         return $result;
     };
 }
-
-#class XML::OPML::EmbeddedOutline is XML::OPML::Outline {
-#    has Str $.opmlvalue is rw;
-#    has Str $.dateAdded is rw;
-#    has Str $.dateDownloaded is rw;
-#    has Str $.description is rw;
-#    has Str $.email is rw;
-#    has Str $.filename is rw;
-#    has Str $.htmlUrl is rw;
-#    has Str $.keywords is rw;
-#    has Str $.text is rw;
-#    has Str $.title is rw;
-#    has Str $.type is rw;
-#    has Str $.version is rw;
-#    has Str $.xmlUrl is rw;
-#    has XML::OPML::Outline @.outlines is rw;
-#
-#    #return the current object's children as an OPML document string
-#    my method createEmbedded(&encode) of Str {
-#        my Str $result;
-#        for @.outlines -> $outline {
-#            $result ~= $outline.as_str(&encode);
-#        }
-#        return $result;
-#    }
-#    
-#    #convert the current object to a string conforming to OPML specification
-#    method as_str(&encode) of Str {
-#        my Str $result = "";
-#        my Str $embText = "";
-#        $embText ~= "dateAdded=\"$.dateAdded\" " if $.dateAdded;
-#        $embText ~= "dateDownloaded=\"$.dateDownloaded\" " if $.dateDownloaded ;
-#        $embText ~= "description=\"$.description\" " if $.description ;
-#        $embText ~= "email=\"$.email\" " if $.email ;
-#        $embText ~= "filename=\"$.filename\" " if $.filename ;
-#        $embText ~= "htmlUrl=\"$.htmlUrl\" " if $.htmlUrl ;
-#        $embText ~= "keywords=\"$.keywords\" " if $.keywords ;
-#        $embText ~= "text=\"$.text\" " if $.text ;
-#        $embText ~= "type=\"$.type\" " if $.type ;
-#        $embText ~= "title=\"$.title\" " if $.title ;
-#        $embText ~= "version=\"$.version\" " if $.version ;
-#        $embText ~= "xmlUrl=\"$.xmlUrl\" " if $.xmlUrl ;
-#        if $embText eq "" {
-#            $result ~= "<outline>\n";
-#        } else {
-#            $result ~= "<outline $embText>\n";
-#        } 
-#        $result ~= self.createEmbedded(&encode);
-#        $result ~= "</outline>\n";
-#        return $result;
-#    }
-#}
-#
-#class XML::OPML::NormalOutline is XML::OPML::Outline {
-#    has %.attributes is rw;
-#    method as_str(&encode) of Str {
-#        my Str $str ~= "<outline ";
-#        my %attrs = %.attributes;
-#        %attrs.sort(*.key);
-#        for %attrs.kv -> $key, $value {
-#            $str ~= "$key=\"" ~ encode($value) ~ "\" ";
-#        } 
-#        $str ~= " />\n";
-#        return $str;
-#    }
-#}
 
 class XML::OPML {
 
@@ -135,7 +64,7 @@ class XML::OPML {
         $headStr ~= "<ownerName>" ~ self.encode($head.ownerName) ~ "</ownerName>\n";
         $headStr ~= "<ownerEmail>" ~ self.encode($head.ownerEmail) ~ "</ownerEmail>\n";
         $headStr ~= "<expansionState>" ~ self.encode($head.expansionState) ~ "</expansionState>\n";
-        $headStr ~= "<vertScrolLState>" ~ self.encode($head.vertScrollState) ~ "</vertScrollState>\n";
+        $headStr ~= "<vertScrollState>" ~ self.encode($head.vertScrollState) ~ "</vertScrollState>\n";
         $headStr ~= "<windowTop>" ~ self.encode($head.windowTop) ~ "</windowTop>\n";
         $headStr ~= "<windowLeft>" ~ self.encode($head.windowLeft) ~ "</windowLeft>\n";
         $headStr ~= "<windowBottom>" ~ self.encode($head.windowBottom) ~ "</windowBottom>\n";
