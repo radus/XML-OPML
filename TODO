@@ -1,0 +1,10 @@
+- Fix grammar stuff:
+
+    - need a correct e-mail and web address reg exp for ownerEmail and ownerId tokens
+    - more test cases
+    - head elements can come in any order, right now we assume a fixed order
+    - outline token doesn't test for the existence of a title attribute
+    - xml header element doesn't test for the existence of a version element
+
+- Add a parser, based on XML::OPML::Grammar, to create XML::OPML objects
+
