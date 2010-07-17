@@ -18,6 +18,9 @@ class XML::OPML::Head {
 class XML::OPML::Outline {
     has %.attributes is rw;
     has @.outlines is rw;
+    
+    #Return the outline as a string representation
+    #the argument &encode is a function used to encode the characters 
     method as_str(&encode) of Str {
         my Str $result ~= "<outline ";
         for %.attributes.sort(*.key) {
