@@ -7,7 +7,7 @@ BEGIN {
 use Test;
 
 use XML::OPML;
-use XML::OPML::Grammar;
+#use XML::OPML::Grammar;
 
 
      my $xmlHeaderTest = '<?xml version="1.0" encoding="ISO-8859-1"?>' ~

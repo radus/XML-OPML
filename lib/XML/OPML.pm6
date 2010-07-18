@@ -1,8 +1,163 @@
 use v6;
 
-# use XML::OPML::Grammar;
+#TODO: separate grammar to a different file
+#       the problem is that if i do this and then 'use XML::OPML::Grammar', 
+#       i get a XML::OPML module redefined error
 
+grammar XML::OPML::Grammar {
 
+    token TOP {
+        ^ \s*
+        <xmlHeader> \s*
+        <opml> \s*
+        $
+    }
+
+    #TODO: xmlHeader should always contain a version attribute
+    token xmlHeader {
+        '<?xml'  (\s+<attribute>)* #\s+ 'version=' #\"?\d+\.?\d+\"?\s+ <attribute>* 
+        \s* '?>'
+    }
+
+    token version {
+        'version="' (\d+\.\d+) '"'
+    }
+    
+    token opml {
+        '<opml' (\s+) <version> '>' \s*
+        <head> \s*
+        <body> \s*
+        '</' (\s*) 'opml' \s* '>'
+    }
+
+    token body {
+        '<body>' \s*
+         <outlineWithSpace>+
+         '</body>'
+    }
+
+    #TODO: This token is not really needed, but if I use something like:
+    #           $<var>=(<attribute>\s*)+
+    #           i get some proxy object, which i have no idea how to use
+    token outlineWithSpace {
+        <outline> \s*
+    }
+
+    token outline {
+       '<outline'  <attributeWithSpace>* \s* 
+        [ '/>'
+          | '>' \s* <outline>* \s* '</outline>'
+        ]
+    }
+
+    token textAttribute {
+        'text="' <text> '"'
+    }
+
+    #TODO: fix this token - the subtokens can be in any order, right now the order in our <head> is fixed
+    token head {
+        '<head>' \s*
+        <title>? \s*
+        <dateCreated>? \s*
+        <dateModified>? \s*
+        <ownerName>? \s*
+        <ownerEmail>? \s*
+        <ownerId>? \s*
+#        <docs>? \s*
+        <expansionState>?  \s*
+        <vertScrollState>? \s*
+        <windowTop>? \s*
+        <windowLeft>? \s*
+        <windowBottom>? \s*
+        <windowRight>? \s*
+        '</head>'
+    } 
+
+##Head Tokens
+
+    token title {
+        '<title>' <text> '</title>'
+    } 
+
+    token dateCreated {
+        '<dateCreated>' <text> '</dateCreated>'
+    }
+
+    token dateModified {
+        '<dateModified>' <text> '</dateModified>'
+    }
+    token ownerName {
+        '<ownerName>' <text> '</ownerName>'
+    }
+
+    #TODO: use a reg expression for a correct email address
+    token ownerEmail {
+        '<ownerEmail>' $<text>=[<[a..zA..Z\.\-]>+  '@' <[a..zA..Z\-]>+ '.' \w+] '</ownerEmail>'
+        # ([\w\-]+\.)+  ([\w\-]+  | ([a-zA-Z]{1})) | [\w-]{2,})) '@' 
+    }
+
+    #this should be a http address
+    #TODO: correct this regular expression
+    token ownerId {
+        '<ownerId>' 
+         $<text>=[(http|https) \:\/\/ <[a..zA..Z\-_]>+  (\.<[a..zA..Z\-_]>+)+ (<[a..zA..Z\-\.,@?^=%&amp;:/~\+#]>*<[a..zA..Z\-\@?^=%&amp;/~\+#]>)?  ]
+        '</ownerId>'
+    }
+
+    token expansionState {
+        '<expansionState>'
+        $<text>=[(\s*\d+\s*\,)* (\s*\d+\s*)]
+        '</expansionState>' 
+    }
+
+    token vertScrollState {
+        '<vertScrollState>'
+        $<text>=[\s*\d+\s*]
+        '</vertScrollState>'
+    }
+
+    token windowTop {
+        '<windowTop>'
+        $<text>=[\s*\d+\s*]
+        '</windowTop>'
+    }
+
+    token windowBottom {
+        '<windowBottom>'
+        $<text>=[\s*\d+\s*]
+        '</windowBottom>'
+    }
+    
+    token windowLeft {
+        '<windowLeft>'
+        $<text>=[\s*\d+\s*]
+        '</windowLeft>'
+    }
+
+    token windowRight {
+        '<windowRight>'
+        $<text>=[\s*\d+\s*]
+        '</windowRight>'
+    }
+
+##END Head Tokens
+
+##Utility tokens 
+
+    token attribute {
+        $<name>=\w+ '="' $<value>=<-["<>]>* '"' 
+    }
+    
+    #TODO: This token is not really needed, but if I use something like:
+    #           $<var>=(\s+<attribute>)+
+    #           i get some proxy object, which i have no idea how to use
+    token attributeWithSpace {
+        \s+<attribute>
+    }
+    
+    token text {  <-[<>&]>* };
+
+}
 
 class XML::OPML::Head {
     has $.title is rw;
@@ -44,6 +199,67 @@ class XML::OPML::Outline {
         }
         return $result;
     };
+}
+
+#class for declaring actions associated with XML::OPML::Grammar rules
+class XML::OPML::Actions {
+    method TOP($/) {
+        make $<opml>.ast;
+    }
+
+    method opml($/) {
+        my $head = $<head>.ast;
+
+        # why do we need to flatten the object????
+        my @outlines = $<body>.ast.flat;
+        my ::XML::OPML $mainObj .= new();
+        $mainObj.head = $head;
+        $mainObj.add_outlines(@outlines); 
+        make $mainObj;
+    }
+    
+    method body($/) {
+       #make ($<outline>)>>.ast;    
+        my @outlines;
+        for @($<outlineWithSpace>) {
+            @outlines.push($_.ast);
+        }
+        make @outlines; 
+    }
+
+    method outlineWithSpace($/) {
+        make $<outline>.ast;
+    }
+
+    method outline($/) {
+        my %attributes;  
+        for @($<attributeWithSpace>) { 
+            %attributes{$_<attribute><name>.Str} = $_<attribute><value>.Str;
+        }
+        my XML::OPML::Outline $currentObj .= new();
+        $currentObj.attributes = %attributes;
+        for @($<outline>) {
+            $currentObj.outlines.push($_.ast);
+        }
+        make $currentObj;
+    }
+
+    method head($/) {
+       make XML::OPML::Head.new(
+            title           => $<title>.elems ?? $<title>[0]<text>.Str !! '',
+            dateCreated     => $<dateCreated>.elems ?? $<dateCreated>[0]<text>.Str !! '',
+            dateModified    => $<dateModified>.elems ?? $<dateModified>[0]<text>.Str !! '',
+            ownerName       => $<ownerName>.elems ?? $<ownerName>[0]<text>.Str !! '',
+            ownerEmail      => $<ownerEmail>.elems ?? $<ownerEmail>[0]<text>.Str !! '',
+            ownerId         => $<ownerId>.elems ?? $<ownerId>[0]<text>.Str !! '',
+            expansionState  => $<expansionState>.elems ?? $<expansionState>[0]<text>.Str !! '',
+            vertScrollState  => $<vertScrollState>.elems ?? $<vertScrollState>[0]<text>.Str !! '',
+            windowTop  => $<windowTop>.elems ?? $<windowTop>[0]<text>.Str !! '',
+            windowBottom  => $<windowBottom>.elems ?? $<windowBottom>[0]<text>.Str !! '',
+            windowLeft  => $<windowLeft>.elems ?? $<windowLeft>[0]<text>.Str !! '',
+            windowRight  => $<windowRight>.elems ?? $<windowRight>[0]<text>.Str !! ''
+        )
+    }
 }
 
 class XML::OPML {
@@ -112,61 +328,7 @@ class XML::OPML {
 
     #create a XML::OPML object from a opml string text
     method parse(Str $opmlText) {
+        return XML::OPML::Grammar.parse($opmlText, :actions(XML::OPML::Actions.new())).ast;
     }
 }
 
-#class for declaring actions associated with XML::OPML::Grammar rules
-class XML::OPML::Actions {
-    method TOP($/) {
-        # make ($<opml>)>>.ast;
-        make $<opml>.ast;
-    }
-
-    method opml($/) {
-        my $head = $<head>.ast;
-        my @outlines = $<body>.ast.flat;
-        my XML::OPML $mainObj .= new();
-        $mainObj.head = $head;
-        $mainObj.add_outlines(@outlines); 
-        make $mainObj;
-    }
-    
-    method body($/) {
-       #make ($<outline>)>>.ast;    
-        my @outlines;
-        for @($<outline>) {
-            @outlines.push($_.ast);
-        }
-        make @outlines; 
-    }
-
-    method outline($/) {
-        my %attributes;  
-        for @($<attributeWithSpace>) { 
-            %attributes{$_<attribute><name>.Str} = $_<attribute><value>.Str;
-        }
-        my XML::OPML::Outline $currentObj .= new();
-        $currentObj.attributes = %attributes;
-        for @($<outline>) {
-            $currentObj.outlines.push($_.ast);
-        }
-        make $currentObj;
-    }
-
-    method head($/) {
-       make XML::OPML::Head.new(
-            title           => $<title>.elems ?? $<title>[0]<text>.Str !! '',
-            dateCreated     => $<dateCreated>.elems ?? $<dateCreated>[0]<text>.Str !! '',
-            dateModified    => $<dateModified>.elems ?? $<dateModified>[0]<text>.Str !! '',
-            ownerName       => $<ownerName>.elems ?? $<ownerName>[0]<text>.Str !! '',
-            ownerEmail      => $<ownerEmail>.elems ?? $<ownerEmail>[0]<text>.Str !! '',
-            ownerId         => $<ownerId>.elems ?? $<ownerId>[0]<text>.Str !! '',
-            expansionState  => $<expansionState>.elems ?? $<expansionState>[0]<text>.Str !! '',
-            vertScrollState  => $<vertScrollState>.elems ?? $<vertScrollState>[0]<text>.Str !! '',
-            windowTop  => $<windowTop>.elems ?? $<windowTop>[0]<text>.Str !! '',
-            windowBottom  => $<windowBottom>.elems ?? $<windowBottom>[0]<text>.Str !! '',
-            windowLeft  => $<windowLeft>.elems ?? $<windowLeft>[0]<text>.Str !! '',
-            windowRight  => $<windowRight>.elems ?? $<windowRight>[0]<text>.Str !! ''
-        )
-    }
-}
