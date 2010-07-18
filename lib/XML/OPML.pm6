@@ -4,15 +4,17 @@ use v6;
 #       the problem is that if i do this and then 'use XML::OPML::Grammar', 
 #       i get a XML::OPML module redefined error
 
+#TODO: the grammar doesn't support xml commentaries inside the document
 grammar XML::OPML::Grammar {
 
     token TOP {
         ^ \s*
         <xmlHeader> \s*
+        <comment>* \s*
         <opml> \s*
-        $
+#        $
     }
-
+    
     #TODO: xmlHeader should always contain a version attribute
     token xmlHeader {
         '<?xml'  (\s+<attribute>)* #\s+ 'version=' #\"?\d+\.?\d+\"?\s+ <attribute>* 
@@ -27,13 +29,13 @@ grammar XML::OPML::Grammar {
         '<opml' (\s+) <version> '>' \s*
         <head> \s*
         <body> \s*
-        '</' (\s*) 'opml' \s* '>'
+        #'</' (\s*) 'opml' \s* '>'
     }
 
     token body {
         '<body>' \s*
-         <outlineWithSpace>+
-         '</body>'
+         <outlineWithSpace>+ 
+         #'</body>'
     }
 
     #TODO: This token is not really needed, but if I use something like:
@@ -45,8 +47,8 @@ grammar XML::OPML::Grammar {
 
     token outline {
        '<outline'  <attributeWithSpace>* \s* 
-        [ '/>'
-          | '>' \s* <outline>* \s* '</outline>'
+        [  '/>'
+          | ['>'  \s* <outlineWithSpace>* \s* '</outline>']
         ]
     }
 
@@ -54,29 +56,31 @@ grammar XML::OPML::Grammar {
         'text="' <text> '"'
     }
 
-    #TODO: fix this token - the subtokens can be in any order, right now the order in our <head> is fixed
+    #TODO: this is very slow, maybe some optimizations can be done
     token head {
         '<head>' \s*
-        <title>? \s*
-        <dateCreated>? \s*
-        <dateModified>? \s*
-        <ownerName>? \s*
-        <ownerEmail>? \s*
-        <ownerId>? \s*
-#        <docs>? \s*
-        <expansionState>?  \s*
-        <vertScrollState>? \s*
-        <windowTop>? \s*
-        <windowLeft>? \s*
-        <windowBottom>? \s*
-        <windowRight>? \s*
+        [
+        <title> \s* |
+        <dateCreated> \s* |
+        <dateModified> \s* |
+        <ownerName> \s* |
+        <ownerEmail> \s* |
+        <ownerId> \s* |
+####        <docs> \s* |
+        <expansionState>  \s* |
+        <vertScrollState> \s* |
+        <windowTop> \s* |
+        <windowLeft> \s* |
+        <windowBottom> \s* |
+        <windowRight> \s* 
+        ]*
         '</head>'
     } 
 
 ##Head Tokens
 
     token title {
-        '<title>' <text> '</title>'
+        '<title>'   <text> '</title>'
     } 
 
     token dateCreated {
@@ -100,7 +104,8 @@ grammar XML::OPML::Grammar {
     #TODO: correct this regular expression
     token ownerId {
         '<ownerId>' 
-         $<text>=[(http|https) \:\/\/ <[a..zA..Z\-_]>+  (\.<[a..zA..Z\-_]>+)+ (<[a..zA..Z\-\.,@?^=%&amp;:/~\+#]>*<[a..zA..Z\-\@?^=%&amp;/~\+#]>)?  ]
+         $<text>=[(http|https) \:\/\/ <[a..zA..Z\-_0..9]>+  (\.<[0..9a..zA..Z\-_]>+)+ (<[0..9a..zA..Z\-\.,@?^\=%&amp;:\/~\+#]>*)] 
+         # <[0..9a..zA..Z\-\@?^\=%&amp;\/~\+#]>)?  ]
         '</ownerId>'
     }
 
@@ -156,6 +161,10 @@ grammar XML::OPML::Grammar {
     }
     
     token text {  <-[<>&]>* };
+
+    token comment {
+        '<!--' .*? '-->'
+    }
 
 }
 
@@ -238,8 +247,8 @@ class XML::OPML::Actions {
         }
         my XML::OPML::Outline $currentObj .= new();
         $currentObj.attributes = %attributes;
-        for @($<outline>) {
-            $currentObj.outlines.push($_.ast);
+        for @($<outlineWithSpace>) {
+            $currentObj.outlines.push($_<outline>.ast);
         }
         make $currentObj;
     }
