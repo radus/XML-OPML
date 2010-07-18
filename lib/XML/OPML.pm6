@@ -106,37 +106,37 @@ grammar XML::OPML::Grammar {
 
     token expansionState {
         '<expansionState>'
-        $<text>=[(\s*\d+\s*\,)* (\s*\d+\s*)]
+        $<text>=[(\s*\d+\s*\,)* (\s*\d+\s*)]*
         '</expansionState>' 
     }
 
     token vertScrollState {
         '<vertScrollState>'
-        $<text>=[\s*\d+\s*]
+        $<text>=[\s*\d+\s*]*
         '</vertScrollState>'
     }
 
     token windowTop {
         '<windowTop>'
-        $<text>=[\s*\d+\s*]
+        $<text>=[\s*\d+\s*]*
         '</windowTop>'
     }
 
     token windowBottom {
         '<windowBottom>'
-        $<text>=[\s*\d+\s*]
+        $<text>=[\s*\d+\s*]*
         '</windowBottom>'
     }
     
     token windowLeft {
         '<windowLeft>'
-        $<text>=[\s*\d+\s*]
+        $<text>=[\s*\d+\s*]*
         '</windowLeft>'
     }
 
     token windowRight {
         '<windowRight>'
-        $<text>=[\s*\d+\s*]
+        $<text>=[\s*\d+\s*]*
         '</windowRight>'
     }
 
@@ -267,7 +267,7 @@ class XML::OPML {
     has XML::OPML::Head $.head is rw;
     has $.version is rw = "2.0";
     has Str $.encoding is rw = "UTF-8";
-    has Bool $.encode-output = False;
+    has Bool $.encode-output is rw = True;
     has XML::OPML::Outline @.outlines;
 
     method add_outline(XML::OPML::Outline $outline) {
@@ -280,9 +280,18 @@ class XML::OPML {
         }
     }
 
-    my method encode(Str $str ) of Str {
+    my method encode(Str $str is copy) of Str {
         return $str unless($.encode-output);
-        
+        my %charmap = (
+                '>' => '&gt;',
+                '<' => '&lt;',
+                '"' => '&quot;',
+                '&' => '&amp;',
+            )
+            ;
+        $str.subst( rx/ <[<>&"]> /, -> $x { %charmap{~$x} }, :g);
+        return $str;
+
     }
     
     my method getHeadStr() of Str {
@@ -328,7 +337,20 @@ class XML::OPML {
 
     #create a XML::OPML object from a opml string text
     method parse(Str $opmlText) {
-        return XML::OPML::Grammar.parse($opmlText, :actions(XML::OPML::Actions.new())).ast;
+        my XML::OPML $result = XML::OPML::Grammar.parse($opmlText, :actions(XML::OPML::Actions.new())).ast;
+        $result.encode-output = False;
+        return $result;
+    }
+
+    method read(Str $path) {
+        return XML::OPML.parse(slurp($path)); 
+    }
+
+    #print the contents of the XML::OPML object to a file
+    method write(Str $path) {
+        my $fh = open($path, :w) or die $!;
+        $fh.print(self.as_string());
+        $fh.close();
     }
 }
 
