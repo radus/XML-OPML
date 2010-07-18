@@ -3,11 +3,13 @@ use v6;
 grammar XML::OPML::Grammar {
 
     token TOP {
-       <xmlHeader>
+        ^
+        <xmlHeader>
         <opml> 
-        #$
+        $
     }
 
+    #TODO: xmlHeader should always contain a version attribute
     token xmlHeader {
         '<?xml'  (\s+<attribute>)* #\s+ 'version=' #\"?\d+\.?\d+\"?\s+ <attribute>* 
         \s* '?>'
@@ -31,9 +33,9 @@ grammar XML::OPML::Grammar {
     }
 
     token outline {
-       '<outline'  (\s+<attribute>)* \s* 
-        [ | ('/>')
-          | ('>' <outline>* '</outline>')
+       '<outline'  <attributeWithSpace>* \s* 
+        [ '/>'
+          | '>' <outline>* '</outline>'
         ]
     }
 
@@ -63,7 +65,7 @@ grammar XML::OPML::Grammar {
 ##Head Tokens
 
     token title {
-        '<title>'  <text> '</title>'
+        '<title>' <text> '</title>'
     } 
 
     token dateCreated {
@@ -79,7 +81,7 @@ grammar XML::OPML::Grammar {
 
     #TODO: use a reg expression for a correct email address
     token ownerEmail {
-        '<ownerEmail>' <[a..zA..Z\.\-]>+  '@' <[a..zA..Z\-]>+ '.' \w+ '</ownerEmail>'
+        '<ownerEmail>' $<text>=[<[a..zA..Z\.\-]>+  '@' <[a..zA..Z\-]>+ '.' \w+] '</ownerEmail>'
         # ([\w\-]+\.)+  ([\w\-]+  | ([a-zA-Z]{1})) | [\w-]{2,})) '@' 
     }
 
@@ -87,43 +89,43 @@ grammar XML::OPML::Grammar {
     #TODO: correct this regular expression
     token ownerId {
         '<ownerId>' 
-         (http|https) \:\/\/ <[a..zA..Z\-_]>+  (\.<[a..zA..Z\-_]>+)+ (<[a..zA..Z\-\.,@?^=%&amp;:/~\+#]>*<[a..zA..Z\-\@?^=%&amp;/~\+#]>)?
+         $<text>=[(http|https) \:\/\/ <[a..zA..Z\-_]>+  (\.<[a..zA..Z\-_]>+)+ (<[a..zA..Z\-\.,@?^=%&amp;:/~\+#]>*<[a..zA..Z\-\@?^=%&amp;/~\+#]>)?  ]
         '</ownerId>'
     }
 
     token expansionState {
         '<expansionState>'
-        (\s*\d+\s*\,)* (\s*\d+\s*)
+        $<text>=[(\s*\d+\s*\,)* (\s*\d+\s*)]
         '</expansionState>' 
     }
 
     token vertScrollState {
         '<vertScrollState>'
-        \s*\d+\s*
+        $<text>=[\s*\d+\s*]
         '</vertScrollState>'
     }
 
     token windowTop {
         '<windowTop>'
-        \s*\d+\s*
+        $<text>=[\s*\d+\s*]
         '</windowTop>'
     }
 
     token windowBottom {
         '<windowBottom>'
-        \s*\d+\s*
+        $<text>=[\s*\d+\s*]
         '</windowBottom>'
     }
     
     token windowLeft {
         '<windowLeft>'
-        \s*\d+\s*
+        $<text>=[\s*\d+\s*]
         '</windowLeft>'
     }
 
     token windowRight {
         '<windowRight>'
-        \s*\d+\s*
+        $<text>=[\s*\d+\s*]
         '</windowRight>'
     }
 
@@ -132,7 +134,11 @@ grammar XML::OPML::Grammar {
 ##Utility tokens 
 
     token attribute {
-        \w+ '="' <-["<>]>* \"
+        $<name>=\w+ '="' $<value>=<-["<>]>* '"' 
+    }
+    
+    token attributeWithSpace {
+        \s+<attribute>
     }
     
     token text {  <-[<>&]>* };

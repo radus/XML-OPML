@@ -1,11 +1,16 @@
 use v6;
 
+# use XML::OPML::Grammar;
+
+
+
 class XML::OPML::Head {
     has $.title is rw;
     has $.dateCreated is rw;
     has $.dateModified is rw;
     has $.ownerName is rw;
     has $.ownerEmail is rw;
+    has $.ownerId is rw;
     has $.expansionState is rw;
     has $.vertScrollState is rw;
     has $.windowTop is rw;
@@ -17,14 +22,16 @@ class XML::OPML::Head {
 
 class XML::OPML::Outline {
     has %.attributes is rw;
-    has @.outlines is rw;
+    has Str $text is rw;
+    has XML::OPML::Outline @.outlines is rw;
     
     #Return the outline as a string representation
     #the argument &encode is a function used to encode the characters 
     method as_str(&encode) of Str {
         my Str $result ~= "<outline ";
         for %.attributes.sort(*.key) {
-            $result ~= "$.key=\"" ~ encode($.value) ~ "\" ";
+            #$.key refers to the object, not the current $_. Is this correct?
+            $result ~= $_.key ~ "=\"" ~ encode($_.value) ~ "\" ";
         } 
         if @.outlines {
             $result ~= ">\n";
@@ -42,7 +49,6 @@ class XML::OPML::Outline {
 class XML::OPML {
 
     has XML::OPML::Head $.head is rw;
-    has $.body is rw;
     has $.version is rw = "2.0";
     has Str $.encoding is rw = "UTF-8";
     has Bool $.encode-output = False;
@@ -50,6 +56,12 @@ class XML::OPML {
 
     method add_outline(XML::OPML::Outline $outline) {
         @.outlines.push($outline);
+    }
+
+    method add_outlines(@outlines) {
+        for @outlines {
+            @.outlines.push($_);
+        }
     }
 
     my method encode(Str $str ) of Str {
@@ -97,5 +109,64 @@ class XML::OPML {
         $output ~= "</opml>\n";
         return $output;
     }
+
+    #create a XML::OPML object from a opml string text
+    method parse(Str $opmlText) {
+    }
 }
 
+#class for declaring actions associated with XML::OPML::Grammar rules
+class XML::OPML::Actions {
+    method TOP($/) {
+        # make ($<opml>)>>.ast;
+        make $<opml>.ast;
+    }
+
+    method opml($/) {
+        my $head = $<head>.ast;
+        my @outlines = $<body>.ast.flat;
+        my XML::OPML $mainObj .= new();
+        $mainObj.head = $head;
+        $mainObj.add_outlines(@outlines); 
+        make $mainObj;
+    }
+    
+    method body($/) {
+       #make ($<outline>)>>.ast;    
+        my @outlines;
+        for @($<outline>) {
+            @outlines.push($_.ast);
+        }
+        make @outlines; 
+    }
+
+    method outline($/) {
+        my %attributes;  
+        for @($<attributeWithSpace>) { 
+            %attributes{$_<attribute><name>.Str} = $_<attribute><value>.Str;
+        }
+        my XML::OPML::Outline $currentObj .= new();
+        $currentObj.attributes = %attributes;
+        for @($<outline>) {
+            $currentObj.outlines.push($_.ast);
+        }
+        make $currentObj;
+    }
+
+    method head($/) {
+       make XML::OPML::Head.new(
+            title           => $<title>.elems ?? $<title>[0]<text>.Str !! '',
+            dateCreated     => $<dateCreated>.elems ?? $<dateCreated>[0]<text>.Str !! '',
+            dateModified    => $<dateModified>.elems ?? $<dateModified>[0]<text>.Str !! '',
+            ownerName       => $<ownerName>.elems ?? $<ownerName>[0]<text>.Str !! '',
+            ownerEmail      => $<ownerEmail>.elems ?? $<ownerEmail>[0]<text>.Str !! '',
+            ownerId         => $<ownerId>.elems ?? $<ownerId>[0]<text>.Str !! '',
+            expansionState  => $<expansionState>.elems ?? $<expansionState>[0]<text>.Str !! '',
+            vertScrollState  => $<vertScrollState>.elems ?? $<vertScrollState>[0]<text>.Str !! '',
+            windowTop  => $<windowTop>.elems ?? $<windowTop>[0]<text>.Str !! '',
+            windowBottom  => $<windowBottom>.elems ?? $<windowBottom>[0]<text>.Str !! '',
+            windowLeft  => $<windowLeft>.elems ?? $<windowLeft>[0]<text>.Str !! '',
+            windowRight  => $<windowRight>.elems ?? $<windowRight>[0]<text>.Str !! ''
+        )
+    }
+}

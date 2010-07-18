@@ -1,10 +1,15 @@
 use v6;
 
+BEGIN {
+    unshift @*INC, "/home/radu/work_area/XML-OPML/lib";
+}
+
 use Test;
 
+use XML::OPML;
 use XML::OPML::Grammar;
 
-{
+
      my $xmlHeaderTest = '<?xml version="1.0" encoding="ISO-8859-1"?>' ~
 '<opml version="2.0">' ~
 	'<head>' ~
@@ -39,8 +44,17 @@ use XML::OPML::Grammar;
 			'</outline>' ~
 		'</body>' ~
 	'</opml>';
+
+{
     my $result = XML::OPML::Grammar.parse($xmlHeaderTest);
     is($result.Bool, True);
+}
+
+{
+
+    my $actions = XML::OPML::Actions.new();
+    my $result = XML::OPML::Grammar.parse($xmlHeaderTest, :actions($actions)).ast;
+    $result.as_string().say;
 }
     
     
