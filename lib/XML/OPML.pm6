@@ -90,14 +90,16 @@ grammar XML::OPML::Grammar {
     token dateModified {
         '<dateModified>' <text> '</dateModified>'
     }
+
     token ownerName {
         '<ownerName>' <text> '</ownerName>'
     }
 
-    #TODO: use a reg expression for a correct email address
     token ownerEmail {
-        '<ownerEmail>' $<text>=[<[a..zA..Z\.\-]>+  '@' <[a..zA..Z\-]>+ '.' \w+] '</ownerEmail>'
-        # ([\w\-]+\.)+  ([\w\-]+  | ([a-zA-Z]{1})) | [\w-]{2,})) '@' 
+        '<ownerEmail>'  
+         # $<text>=[<[a..zA..Z0..9.\-_+]>+ '@' <[a..zA..Z0..9.\-]>+? '.' <alpha>+]
+        $<text>=<email>
+         '</ownerEmail>'
     }
 
     #this should be a http address
@@ -166,6 +168,9 @@ grammar XML::OPML::Grammar {
         '<!--' .*? '-->'
     }
 
+    token email {
+        <[a..zA..Z0..9.\-_+]>+ '@' <[a..zA..Z0..9.\-]>+? '.' <alpha>+
+    }
 }
 
 class XML::OPML::Head {
@@ -228,7 +233,6 @@ class XML::OPML::Actions {
     }
     
     method body($/) {
-       #make ($<outline>)>>.ast;    
         my @outlines;
         for @($<outlineWithSpace>) {
             @outlines.push($_.ast);
@@ -363,3 +367,60 @@ class XML::OPML {
     }
 }
 
+=begin description
+
+    XML::OPML module for perl 6.
+    Use this module to create new OPML files or parse existing files.
+
+    Classes contained in this module:
+
+        XML::OPML
+            - main class for OPML documents
+            - attributes:
+                XML::OPML::Header $.header
+                XML::OPML::Outline @outlines
+        XML::OPML::Header
+            - header class
+        XML::OPML::Outline
+            -outline class
+        XML::OPML::Grammar 
+            -grammar for parsing OPML files
+
+        To create a new OPML file, use:
+            my $newDoc = XML::OPML->new();
+        Create a head element and add it to the document:
+            my $opmlHeader = XML::OPML::Head->new(
+                                'title'     => $title,
+                                'ownerName' => $ownerName,
+                                    ....other attributes
+                            );
+            $newDoc->head($opmlHeader);
+
+        Create an outline andd add it to the doc:
+
+            my $outline = XML::OPML::Outline(
+                            'attributes'    => 
+                                {'text'     => $text,
+                                    ...other attributes
+                                }
+                            );
+
+            $newDoc->add_outline($outline);
+
+        To get a string representation of the document:
+            my $opmlStr = $newDoc->as_string();
+        
+        To write it to a file:
+           $newDoc->write($pathToFile);
+
+        To create an opml object from an existing opml string:
+
+            $doc = XML::OPML->parse($opmlStr);
+
+        To create an opml object from an opml file:
+
+            $doc = XML::OPML->read($pathToFile);
+        
+        Right now, both of these methods will fail if the string does not match the currently implemented OPML grammar rules (which might still have some bugs and fail to parse valid documents).
+
+=end  
